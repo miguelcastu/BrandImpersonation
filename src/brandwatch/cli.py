@@ -1,7 +1,8 @@
-"""Command line interface for discovery and browser evidence collection."""
+"""Command line interface for discovery, enrichment and browser evidence collection."""
 
 import argparse
 import asyncio
+import json
 import sqlite3
 import sys
 from contextlib import closing
@@ -9,27 +10,61 @@ from pathlib import Path
 
 from brandwatch.collection import DEMO_URL, CollectionError, CollectionSettings, collect_urls
 from brandwatch.config import BrandConfig
-from brandwatch.discovery import DiscoveryError, read_seed_file, search_crtsh
+from brandwatch.discovery import (
+    MAX_CT_QUERIES,
+    DiscoveryError,
+    read_seed_findings,
+    search_crtsh_findings,
+)
+from brandwatch.enrichment import enrich_hostname
 from brandwatch.hosts import normalize_hostname
 from brandwatch.network import validate_url
 from brandwatch.storage import (
     connect,
     list_candidates,
     list_collections,
+    list_discovery_matches,
+    list_enrichments,
     save_candidates,
     save_collection,
+    save_enrichment,
+    save_findings,
 )
+from brandwatch.typos import generate_variants
 
 
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="brandwatch")
     parser.add_argument("--db", type=Path, default=Path("data/brandwatch.db"))
     commands = parser.add_subparsers(dest="command", required=True)
+
     discover = commands.add_parser("discover", help="Discover candidate domains")
     discover.add_argument("--config", type=Path, default=Path("config/brand.example.toml"))
     discover.add_argument("--source", choices=("file", "ct"), required=True)
     discover.add_argument("--input", type=Path, help="Seed file, required for --source file")
+    discover.add_argument(
+        "--ct-limit",
+        type=int,
+        default=MAX_CT_QUERIES,
+        help=f"Maximum crt.sh queries, 1-{MAX_CT_QUERIES} (default: {MAX_CT_QUERIES})",
+    )
+
+    variants = commands.add_parser("variants", help="Preview generated typo hypotheses offline")
+    variants.add_argument("--config", type=Path, default=Path("config/brand.example.toml"))
+    variants.add_argument("--limit", type=int, default=20)
+
     commands.add_parser("list", help="List stored candidates")
+    matches = commands.add_parser("matches", help="List discovery term provenance")
+    matches.add_argument("--limit", type=int, default=100)
+
+    enrich = commands.add_parser("enrich", help="Attach current DNS and RDAP context")
+    enrich.add_argument("--host", action="append", help="Stored candidate hostname; repeatable")
+    enrich.add_argument("--limit", type=int, default=5, help="Maximum candidates per run, 1-25")
+    enrich.add_argument("--timeout", type=int, default=8, help="RDAP timeout in seconds, 1-30")
+
+    context = commands.add_parser("context", help="List recent DNS/RDAP enrichment results")
+    context.add_argument("--limit", type=int, default=20)
+
     collect = commands.add_parser("collect", help="Visit candidates and save rendered evidence")
     selection = collect.add_mutually_exclusive_group()
     selection.add_argument(
@@ -70,6 +105,26 @@ def select_urls(
     return [f"https://{host}/" for host in sorted(known)[:limit]]
 
 
+def select_hosts(
+    connection: sqlite3.Connection, requested: list[str] | None, limit: int
+) -> list[str]:
+    if not 1 <= limit <= 25:
+        raise ValueError("limit must be between 1 and 25")
+    known = {host for host, _ in list_candidates(connection)}
+    if requested:
+        hosts = []
+        for host in dict.fromkeys(requested):
+            normalized = normalize_hostname(host)
+            if normalized is None or normalized not in known:
+                raise ValueError(f"Discover hostname {host} before enriching it")
+            if normalized not in hosts:
+                hosts.append(normalized)
+        if len(hosts) > limit:
+            raise ValueError("Too many hosts; increase --limit (up to 25)")
+        return hosts
+    return sorted(known)[:limit]
+
+
 def run_collection(args) -> int:
     settings = CollectionSettings(timeout_ms=args.timeout_ms, render_wait_ms=args.render_wait_ms)
     if not 1 <= args.limit <= 25:
@@ -90,6 +145,24 @@ def run_collection(args) -> int:
         return int(any(result.status != "ok" for result in results))
 
 
+def run_enrichment(args) -> int:
+    if not 1 <= args.timeout <= 30:
+        raise ValueError("timeout must be between 1 and 30 seconds")
+    with closing(connect(args.db)) as connection:
+        hosts = select_hosts(connection, args.host, args.limit)
+        if not hosts:
+            print("No candidates to enrich. Run discover first.")
+            return 0
+        failed = False
+        for host in hosts:
+            result = enrich_hostname(host, timeout=args.timeout)
+            save_enrichment(connection, result)
+            addresses = len(result.dns.get("ipv4", [])) + len(result.dns.get("ipv6", []))
+            print(f"{host}\t{result.status}\taddresses={addresses}\trdap={bool(result.rdap)}")
+            failed |= result.status == "error"
+        return int(failed)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = make_parser()
     args = parser.parse_args(argv)
@@ -99,14 +172,40 @@ def main(argv: list[str] | None = None) -> int:
             if args.source == "file":
                 if args.input is None:
                     parser.error("--input is required for --source file")
-                hosts = read_seed_file(args.input, config)
+                if args.ct_limit != MAX_CT_QUERIES:
+                    parser.error("--ct-limit is only used with --source ct")
+                findings = read_seed_findings(args.input, config)
             else:
                 if args.input is not None:
                     parser.error("--input is only used with --source file")
-                hosts = search_crtsh(config)
+                findings = search_crtsh_findings(config, max_queries=args.ct_limit)
             with closing(connect(args.db)) as connection:
-                count = save_candidates(connection, hosts, args.source)
+                count = save_findings(connection, findings, args.source)
             print(f"Stored {count} candidate(s) from {args.source}.")
+        elif args.command == "variants":
+            config = BrandConfig.load(args.config)
+            for variant in generate_variants(config, limit=args.limit):
+                print(f"{variant.value}\t{variant.base}\t{variant.rule}")
+        elif args.command == "matches":
+            if not 1 <= args.limit <= 1000:
+                raise ValueError("matches limit must be between 1 and 1000")
+            with closing(connect(args.db)) as connection:
+                for row in list_discovery_matches(connection, args.limit):
+                    print("\t".join(row))
+        elif args.command == "enrich":
+            return run_enrichment(args)
+        elif args.command == "context":
+            if not 1 <= args.limit <= 100:
+                raise ValueError("context limit must be between 1 and 100")
+            with closing(connect(args.db)) as connection:
+                for run_id, host, collected_at, status, payload in list_enrichments(
+                    connection, args.limit
+                ):
+                    data = json.loads(payload)
+                    addresses = len(data["dns"].get("ipv4", [])) + len(
+                        data["dns"].get("ipv6", [])
+                    )
+                    print(f"{run_id}\t{host}\t{status}\t{collected_at}\taddresses={addresses}")
         elif args.command == "collect":
             return run_collection(args)
         elif args.command == "evidence":
