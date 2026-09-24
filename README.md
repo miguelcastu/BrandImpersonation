@@ -2,7 +2,7 @@
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
-Sprints 1 and 2 implement discovery from seed files and [crt.sh](https://crt.sh/), candidate filtering, SQLite storage, and explicit Playwright collection of rendered page evidence. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Later work includes automatic typosquatting variants in Sprint 3 and automatic page analysis in Sprint 4, so collected screenshots do not need to be opened one by one for initial triage. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md) and [ADR 0002](docs/adr/0002-rendered-browser-evidence.md).
+Sprints 1 through 3 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, and explicit Playwright collection of rendered page evidence. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Later work includes automatic page analysis in Sprint 4, so collected screenshots do not need to be opened one by one for initial triage. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md) and [ADR 0002](docs/adr/0002-rendered-browser-evidence.md).
 
 ## Run the offline example
 
@@ -41,6 +41,22 @@ tests/               Unit and CLI tests
 ```
 
 Local results live under `data/` and are ignored by Git.
+
+## Preview typos and enrich candidates (Sprint 3)
+
+```shell
+uv run brandwatch variants --limit 10
+uv run brandwatch discover --source file --input examples/seeds.txt
+uv run brandwatch matches
+uv run brandwatch enrich --limit 5
+uv run brandwatch context
+```
+
+Generated typo strings are bounded hypotheses, not findings. CT discovery keeps configured search
+terms first and performs at most ten external queries per run. `matches` records which keyword or
+variant matched each observed hostname. Enrichment operates only on stored candidates and keeps
+append-only DNS/RDAP snapshots; partial failures remain visible. See
+[the Sprint 3 walkthrough](docs/sprints/03-typos-enrichment.md).
 
 ## Collect rendered browser evidence (Sprint 2)
 

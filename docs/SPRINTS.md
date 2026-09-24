@@ -5,8 +5,8 @@ Each sprint ends with a working CLI path, focused tests, documentation, and a re
 | Sprint | Scope | Reviewable result | Status |
 | --- | --- | --- | --- |
 | 1 — Discovery | Brand config, seed file, CT search, normalization, official-domain exclusion, SQLite sightings, CLI, CI | Discover and list candidate domains with source provenance | Complete; Sprint 2 authorized |
-| 2 — Collection | Browser-assisted seed workflow and opt-in Playwright Chromium visit; rendered DOM text, title, forms, links, screenshot and fetch metadata; per-host limits | Local evidence for selected candidates, including JavaScript-rendered pages | Implemented; awaiting review |
-| 3 — Typosquatting and enrichment | Bounded variants from the brand name/keywords, CT searches that retain variant matches; free current DNS and RDAP lookups; optional passive DNS only if a suitable free interface exists | Discover spelling variants and attach technical context | Planned |
+| 2 — Collection | Browser-assisted seed workflow and opt-in Playwright Chromium visit; rendered DOM text, title, forms, links, screenshot and fetch metadata; per-host limits | Local evidence for selected candidates, including JavaScript-rendered pages | Complete; Sprint 3 authorized |
+| 3 — Typosquatting and enrichment | Bounded variants from the brand name/keywords, CT searches that retain variant matches; free current DNS and RDAP lookups; optional passive DNS only if a suitable free interface exists | Discover spelling variants and attach technical context | Implemented; awaiting review |
 | 4 — Automated page analysis and scoring | Analyze every saved page using brand, rendered text, form and link signals, Sprint 3 enrichment, and local screenshot OCR when needed; versioned weighted rules and conservative labels | Run one command to classify collected pages with a factor breakdown, without opening every screenshot | Planned |
 | 5 — Action | Local case report, JSON/CSV export, `no action` and `review` decisions; no external submission | Review package and end-to-end demo | Planned |
 
@@ -35,7 +35,7 @@ Each sprint ends with a working CLI path, focused tests, documentation, and a re
 - Unit and browser integration tests run in CI without visiting external websites.
 - See [the Sprint 2 walkthrough](sprints/02-collection.md) and [ADR 0002](adr/0002-rendered-browser-evidence.md).
 
-## Sprint 3: planned typosquatting behavior
+## Sprint 3: typosquatting and enrichment behavior
 
 Given the configured brand (for example `Microsoft` / keyword `microsoft`), generate a small,
 deterministic set of spelling variants automatically. Include character substitutions such as
@@ -49,7 +49,7 @@ recognize generated variants: otherwise `micr0soft` would be discarded by today'
 
 Tests will verify the expected substitutions, deduplication, query caps, official-domain exclusion,
 and that a CT fixture containing `micr0soft` survives filtering. Generated strings are hypotheses;
-only observed hostnames become discovered candidates. This feature is planned, not active in Sprint 2.
+only observed hostnames become discovered candidates. This behavior is implemented in Sprint 3; see [the walkthrough](sprints/03-typos-enrichment.md) and [ADR 0003](adr/0003-bounded-typos-and-enrichment.md).
 
 ## Sprint 4: planned automatic page analysis
 
