@@ -1,0 +1,6 @@
+# Example scope. Add known official domains before investigating any findings.
+name = "Microsoft"
+keywords = ["microsoft"]
+# CT substring searches can be large; use a few targeted terms for this lab.
+ct_queries = ["microsoft-login", "microsoft365", "microsoft-support"]
+legitimate_domains = ["microsoft.com", "microsoftonline.com", "office.com", "live.com"]

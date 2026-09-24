@@ -1,0 +1,5 @@
+# Offline demonstration inputs; these are illustrative, not threat claims.
+https://login.microsoft.com/
+https://microsoft-account.example/login
+microsoft-support.example
+unrelated.example
