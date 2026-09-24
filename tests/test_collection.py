@@ -5,7 +5,7 @@ import pytest
 
 from brandwatch.cli import main, select_urls
 from brandwatch.collection import CollectionResult, CollectionSettings
-from brandwatch.network import RequestGuard, validate_url
+from brandwatch.network import RequestGuard, is_safe_public_address, validate_url
 from brandwatch.storage import connect, list_collections, save_candidates, save_collection
 
 
@@ -53,6 +53,21 @@ def test_guard_allows_public_get_but_blocks_posts_and_limits_requests(monkeypatc
     assert asyncio.run(guard.check("https://site.example/")) is None
     assert "GET and HEAD" in asyncio.run(guard.check("https://site.example/", "POST"))
     assert "limit" in asyncio.run(guard.check("https://site.example/"))
+
+
+def test_public_address_policy_rejects_internal_and_metadata_ranges():
+    assert is_safe_public_address("93.184.216.34") is True
+    assert is_safe_public_address("127.0.0.1") is False
+    assert is_safe_public_address("169.254.169.254") is False
+    assert is_safe_public_address("::1") is False
+
+
+def test_guard_blocks_internal_hostname_before_dns(monkeypatch):
+    async def fail_resolution(_):
+        raise AssertionError("internal hostname should be rejected before DNS")
+
+    monkeypatch.setattr("brandwatch.network.resolve_addresses", fail_resolution)
+    assert "hostname blocked" in asyncio.run(RequestGuard().check("https://metadata.google.internal/"))
 
 
 def test_selector_requires_discovery_and_preserves_url_path(tmp_path):

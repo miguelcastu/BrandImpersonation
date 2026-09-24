@@ -25,6 +25,20 @@ async def resolve_addresses(host: str) -> set[str]:
     return {entry[4][0] for entry in entries}
 
 
+def is_safe_public_address(address: str) -> bool:
+    """Return whether an address is suitable for the public-web collection sandbox."""
+    parsed = ipaddress.ip_address(address)
+    return (
+        parsed.is_global
+        and not parsed.is_private
+        and not parsed.is_loopback
+        and not parsed.is_link_local
+        and not parsed.is_reserved
+        and not parsed.is_multicast
+        and not parsed.is_unspecified
+    )
+
+
 class RequestGuard:
     """Check HTTP destinations and cap requests within one browser context.
 
@@ -45,18 +59,18 @@ class RequestGuard:
             return "only GET and HEAD requests are allowed"
         try:
             host = validate_url(url)
-            if host == "localhost" or host.endswith(".localhost"):
-                return "local hostname blocked"
-            if host not in self.addresses:
-                self.addresses[host] = await asyncio.wait_for(resolve_addresses(host), timeout=3)
-            addresses = self.addresses[host]
+            if (
+                host == "localhost"
+                or host.endswith((".localhost", ".internal", ".local"))
+                or host in {"metadata", "metadata.google.internal", "host.docker.internal"}
+            ):
+                return "local or metadata hostname blocked"
+            # Resolve for every request so a cached public answer cannot outlive a DNS change.
+            addresses = await asyncio.wait_for(resolve_addresses(host), timeout=3)
+            self.addresses[host] = addresses
             if not addresses:
                 return "DNS returned no addresses"
-            if any(
-                not ipaddress.ip_address(address).is_global
-                or ipaddress.ip_address(address).is_multicast
-                for address in addresses
-            ):
+            if any(not is_safe_public_address(address) for address in addresses):
                 return "non-public IP address blocked"
         except (OSError, ValueError, TimeoutError) as exc:
             return f"destination check failed: {exc}"

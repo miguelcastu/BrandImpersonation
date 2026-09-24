@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">BrandWatch dashboard preview</title>
+  <desc id="desc">Dark local dashboard showing scored candidate cases.</desc>
+  <rect width="1200" height="620" rx="20" fill="#101827"/>
+  <rect x="55" y="45" width="1090" height="530" rx="16" fill="#182438" stroke="#2d405d"/>
+  <text x="95" y="105" fill="#e5edf8" font-family="Arial,sans-serif" font-size="30" font-weight="700">BrandWatch local cases</text>
+  <text x="95" y="136" fill="#9fb0c8" font-family="Arial,sans-serif" font-size="16">Brand: Microsoft · Report sprint5-v1</text>
+  <text x="910" y="110" fill="#8ff0bb" font-family="Arial,sans-serif" font-size="14">No external action submitted</text>
+  <rect x="95" y="178" width="180" height="40" rx="8" fill="#101827" stroke="#385170"/><text x="115" y="204" fill="#e5edf8" font-family="Arial,sans-serif" font-size="15">Filter: All cases ▾</text>
+  <g font-family="Arial,sans-serif" font-size="13" fill="#9fb0c8"><text x="95" y="270">HOSTNAME</text><text x="465" y="270">SCORE</text><text x="565" y="270">LABEL</text><text x="755" y="270">DECISION</text><text x="900" y="270">FACTORS</text></g>
+  <g stroke="#2d405d"><path d="M95 288 H1105"/><path d="M95 372 H1105"/><path d="M95 456 H1105"/></g>
+  <g font-family="Arial,sans-serif" font-size="16"><text x="95" y="326" fill="#8bd5ff">micr0soft-login.example</text><text x="465" y="326" fill="#e5edf8">12</text><rect x="565" y="302" width="108" height="30" rx="15" fill="#854d0e"/><text x="583" y="322" fill="#fef08a" font-size="13">review</text><text x="755" y="326" fill="#fef08a">review</text><text x="900" y="326" fill="#e5edf8">credential_fields (3), external_action (4)</text>
+  <text x="95" y="410" fill="#8bd5ff">microsoft-support.example</text><text x="465" y="410" fill="#e5edf8">1</text><rect x="565" y="386" width="112" height="30" rx="15" fill="#14532d"/><text x="583" y="406" fill="#bbf7d0" font-size="13">low_signal</text><text x="755" y="410" fill="#bbf7d0">no_action</text><text x="900" y="410" fill="#e5edf8">brand_in_text (1)</text>
+  <text x="95" y="494" fill="#8bd5ff">empty-candidate.example</text><text x="465" y="494" fill="#e5edf8">0</text><rect x="565" y="470" width="160" height="30" rx="15" fill="#374151"/><text x="583" y="490" fill="#e5e7eb" font-size="13">insufficient_evidence</text><text x="755" y="494" fill="#e5e7eb">review</text><text x="900" y="494" fill="#e5edf8">capture failed</text></g>
+</svg>

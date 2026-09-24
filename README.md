@@ -2,7 +2,11 @@
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
-Sprints 1 through 5 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, explicit Playwright collection, explainable page scoring, and local case reporting. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. The action stage only writes review artifacts; it never submits external takedowns. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md), [ADR 0002](docs/adr/0002-rendered-browser-evidence.md), [ADR 0003](docs/adr/0003-bounded-typos-and-enrichment.md), [ADR 0004](docs/adr/0004-explainable-scoring.md), and [ADR 0005](docs/adr/0005-local-action-reporting.md).
+Sprints 1 through 6 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, explicit Playwright collection, explainable page scoring, local case reporting, a read-only dashboard and collection hardening. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. The action stage only writes review artifacts; it never submits external takedowns. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md), [ADR 0002](docs/adr/0002-rendered-browser-evidence.md), [ADR 0003](docs/adr/0003-bounded-typos-and-enrichment.md), [ADR 0004](docs/adr/0004-explainable-scoring.md), [ADR 0005](docs/adr/0005-local-action-reporting.md), and [ADR 0006](docs/adr/0006-final-hardening-and-dashboard.md).
+
+![BrandWatch architecture](docs/images/architecture.svg)
+
+![BrandWatch dashboard preview](docs/images/dashboard-preview.svg)
 
 ## Run the offline example
 
@@ -115,3 +119,17 @@ uv run brandwatch --db data/demo.db actions
 `no_action`. The report contains factors, provenance, evidence paths and compact DNS/RDAP context,
 without copying page contents or contact data. No external action is submitted. See the [Sprint 5
 walkthrough](docs/sprints/05-action-report.md) and [ADR 0005](docs/adr/0005-local-action-reporting.md).
+
+## Sprint 6: final improvements and hardening
+
+The final improvement sprint adds keyboard-neighbor and repeated-character typo hypotheses, more
+login-language and POST-form scoring signals, an offline HTML dashboard, and a documented SSRF
+hardening profile. Generate the dashboard from a JSON report with:
+
+```shell
+uv run brandwatch --db data/demo.db dashboard --input data/cases.json --output data/dashboard.html
+```
+
+The dashboard is local, dependency-free and uses no external JavaScript or fonts. Read
+[the security guide](docs/SECURITY.md) before collecting real public pages. The application checks
+destinations, but production use still requires VM/container isolation and network egress controls.

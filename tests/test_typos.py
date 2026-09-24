@@ -24,6 +24,7 @@ def test_variants_are_deterministic_bounded_and_include_required_edits():
     assert {"m1crosoft", "micr0soft", "micro5oft", "micros0ft"} <= values
     assert any(variant.rule.startswith("delete:") for variant in first)
     assert any(variant.rule.startswith("swap:") for variant in first)
+    assert any(variant.rule.startswith("keyboard:") for variant in first)
     assert "microsoft" not in values
 
 

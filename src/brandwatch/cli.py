@@ -13,6 +13,7 @@ from uuid import uuid4
 from brandwatch.analysis import analyze_evidence_file
 from brandwatch.collection import DEMO_URL, CollectionError, CollectionSettings, collect_urls
 from brandwatch.config import BrandConfig
+from brandwatch.dashboard import render_dashboard_file
 from brandwatch.discovery import (
     MAX_CT_QUERIES,
     DiscoveryError,
@@ -100,6 +101,10 @@ def make_parser() -> argparse.ArgumentParser:
     )
     actions = commands.add_parser("actions", help="List local report decisions")
     actions.add_argument("--limit", type=int, default=100)
+
+    dashboard = commands.add_parser("dashboard", help="Create a local HTML case dashboard")
+    dashboard.add_argument("--input", type=Path, default=Path("data/report.json"))
+    dashboard.add_argument("--output", type=Path, default=Path("data/dashboard.html"))
 
     collect = commands.add_parser("collect", help="Visit candidates and save rendered evidence")
     selection = collect.add_mutually_exclusive_group()
@@ -335,6 +340,9 @@ def main(argv: list[str] | None = None) -> int:
             with closing(connect(args.db)) as connection:
                 for row in list_actions(connection, args.limit):
                     print("\t".join(row))
+        elif args.command == "dashboard":
+            render_dashboard_file(args.input, args.output)
+            print(f"Wrote local dashboard to {args.output}.")
         elif args.command == "collect":
             return run_collection(args)
         elif args.command == "evidence":

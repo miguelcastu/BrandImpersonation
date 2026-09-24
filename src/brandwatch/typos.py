@@ -7,6 +7,16 @@ if TYPE_CHECKING:
     from brandwatch.config import BrandConfig
 
 SUBSTITUTIONS = {"o": "0", "i": "1", "l": "1", "s": "5"}
+KEYBOARD_NEIGHBORS = {
+    "a": "q",
+    "e": "w",
+    "i": "u",
+    "o": "p",
+    "s": "a",
+    "t": "r",
+    "m": "n",
+    "c": "x",
+}
 
 
 @dataclass(frozen=True)
@@ -48,9 +58,29 @@ def generate_variants(config: "BrandConfig", limit: int = 20) -> tuple[TypoVaria
                     base,
                     f"substitute:{char}->{replacement}@{index}",
                 )
+        # Reserve one deletion and one adjacent swap before filling the cap with
+        # additional keyboard and repeated-character hypotheses.
+        if base:
+            add(base[1:], base, f"delete:{base[0]}@0")
+        if len(base) > 1 and base[0] != base[1]:
+            add(base[1] + base[0] + base[2:], base, "swap:0-1")
+        for index, char in enumerate(base):
+            neighbor = KEYBOARD_NEIGHBORS.get(char)
+            if neighbor:
+                add(
+                    base[:index] + neighbor + base[index + 1 :],
+                    base,
+                    f"keyboard:{char}->{neighbor}@{index}",
+                )
         for index in range(len(base)):
+            add(
+                base[:index] + base[index] + base[index:],
+                base,
+                f"duplicate:{base[index]}@{index}",
+            )
+        for index in range(1, len(base)):
             add(base[:index] + base[index + 1 :], base, f"delete:{base[index]}@{index}")
-        for index in range(len(base) - 1):
+        for index in range(1, len(base) - 1):
             if base[index] != base[index + 1]:
                 add(
                     base[:index]

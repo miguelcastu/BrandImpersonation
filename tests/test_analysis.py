@@ -150,4 +150,4 @@ def test_cli_analyze_persists_explainable_result(tmp_path, capsys):
     assert main(["--db", str(database), "analyze", "--config", str(config)]) == 0
     assert "low_signal" in capsys.readouterr().out
     assert main(["--db", str(database), "analyses"]) == 0
-    assert "sprint4-v1" in capsys.readouterr().out
+    assert "sprint6-v1" in capsys.readouterr().out

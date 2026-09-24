@@ -9,6 +9,7 @@ Each sprint ends with a working CLI path, focused tests, documentation, and a re
 | 3 - Typosquatting and enrichment | Bounded variants, CT match provenance, current DNS and RDAP lookups | Discover spelling variants and attach technical context | Complete |
 | 4 - Automated page analysis and scoring | Analyze saved evidence with explainable weighted rules and optional local OCR | Classify collected pages with a factor breakdown without opening every screenshot | Complete |
 | 5 - Action and reporting | Local case decisions plus JSON/CSV export; no external submission | Review package and end-to-end demo | Implemented; awaiting review |
+| 6 - Final improvements and hardening | Dashboard, extra signals, local DNS history guidance and SSRF hardening | Safe, explainable local review experience | Implemented; awaiting review |
 
 ## Sprint 1
 
@@ -58,6 +59,25 @@ uv run brandwatch --db data/demo.db actions
 ```
 
 See [the Sprint 5 walkthrough](sprints/05-action-report.md) and [ADR 0005](adr/0005-local-action-reporting.md).
+
+## Sprint 6: final improvements and hardening
+
+The typo generator now adds a small keyboard-neighbor and repeated-character family while keeping
+the global cap. Scoring adds login-language and credential-POST signals and uses rule version
+`sprint6-v1`. The dependency-free `dashboard` command renders a local HTML table from a JSON report;
+it loads no remote scripts, fonts or data.
+
+Collection refreshes DNS checks per request, rejects local, metadata and reserved networks, keeps
+Chromium's sandbox enabled, uses fresh non-persistent contexts and preserves the request, response,
+redirect and method limits. `docs/SECURITY.md` documents disposable VM/container operation and
+egress firewall controls. Repeated enrichment snapshots remain the free historical DNS view; no
+passive DNS provider is silently substituted.
+
+```shell
+uv run brandwatch --db data/demo.db dashboard --input data/cases.json --output data/dashboard.html
+```
+
+See [the security guide](SECURITY.md) and [ADR 0006](adr/0006-final-hardening-and-dashboard.md).
 
 ## Deliberate limits
 

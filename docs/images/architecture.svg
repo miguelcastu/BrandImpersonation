@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">BrandWatch architecture</title>
+  <desc id="desc">A five stage local pipeline from discovery to local reporting.</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1"><stop stop-color="#101827"/><stop offset="1" stop-color="#182d46"/></linearGradient><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#78d6ff"/></marker></defs>
+  <rect width="1200" height="520" rx="22" fill="url(#bg)"/>
+  <text x="60" y="68" fill="#e5edf8" font-family="Arial,sans-serif" font-size="30" font-weight="700">BrandWatch Lab</text>
+  <text x="60" y="98" fill="#9fb0c8" font-family="Arial,sans-serif" font-size="16">Free-first local detection pipeline</text>
+  <g font-family="Arial,sans-serif" font-size="15" fill="#e5edf8">
+    <rect x="60" y="170" width="190" height="105" rx="14" fill="#23415c" stroke="#78d6ff"/><text x="83" y="208" font-size="19" font-weight="700">Discovery</text><text x="83" y="237">CT, seeds, typos</text><text x="83" y="260">SQLite candidates</text>
+    <rect x="285" y="170" width="190" height="105" rx="14" fill="#23415c" stroke="#78d6ff"/><text x="308" y="208" font-size="19" font-weight="700">Collection</text><text x="308" y="237">Playwright DOM</text><text x="308" y="260">PNG + evidence JSON</text>
+    <rect x="510" y="170" width="190" height="105" rx="14" fill="#23415c" stroke="#78d6ff"/><text x="533" y="208" font-size="19" font-weight="700">Enrichment</text><text x="533" y="237">DNS + RDAP</text><text x="533" y="260">History snapshots</text>
+    <rect x="735" y="170" width="190" height="105" rx="14" fill="#23415c" stroke="#78d6ff"/><text x="758" y="208" font-size="19" font-weight="700">Scoring</text><text x="758" y="237">Rules + optional OCR</text><text x="758" y="260">Explainable factors</text>
+    <rect x="960" y="170" width="180" height="105" rx="14" fill="#28523f" stroke="#8ff0bb"/><text x="985" y="208" font-size="19" font-weight="700">Action</text><text x="985" y="237">JSON / CSV</text><text x="985" y="260">Local review only</text>
+  </g>
+  <g stroke="#78d6ff" stroke-width="3" fill="none" marker-end="url(#arrow)"><path d="M250 222 H280"/><path d="M475 222 H505"/><path d="M700 222 H730"/><path d="M925 222 H955"/></g>
+  <rect x="150" y="355" width="900" height="85" rx="16" fill="#111c2d" stroke="#385170"/>
+  <text x="180" y="390" fill="#e5edf8" font-family="Arial,sans-serif" font-size="18" font-weight="700">Safety boundaries</text>
+  <text x="180" y="418" fill="#9fb0c8" font-family="Arial,sans-serif" font-size="15">Public-IP request guard · Chromium sandbox · GET/HEAD only · request/time/redirect limits · no external takedowns</text>
+</svg>

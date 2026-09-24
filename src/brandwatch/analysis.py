@@ -12,7 +12,7 @@ from uuid import uuid4
 from brandwatch.config import BrandConfig
 from brandwatch.typos import brand_terms
 
-RULE_VERSION = "sprint4-v1"
+RULE_VERSION = "sprint6-v1"
 MAX_OCR_SECONDS = 20
 
 
@@ -78,6 +78,22 @@ def score_evidence(
             _factor("brand_in_rendered_text", 1, f"rendered text contains '{body_match}'")
         )
 
+    login_terms = (
+        "sign in",
+        "sign-in",
+        "log in",
+        "log-in",
+        "login",
+        "password",
+        "verify your account",
+        "secure account",
+    )
+    login_hits = [term for term in login_terms if term in body_text]
+    if login_hits:
+        factors.append(
+            _factor("login_language", 1, f"login-oriented language: {', '.join(login_hits[:3])}")
+        )
+
     credential_fields = []
     credential_forms = []
     for form in forms:
@@ -107,6 +123,13 @@ def score_evidence(
                 f"{len(credential_fields)} password/email/login-like field(s) detected",
             )
         )
+    post_forms = [
+        form
+        for form in credential_forms
+        if _text(form.get("method")) == "post"
+    ]
+    if post_forms:
+        factors.append(_factor("credential_form_post", 1, "credential form uses POST"))
     external_actions = [
         form
         for form in credential_forms

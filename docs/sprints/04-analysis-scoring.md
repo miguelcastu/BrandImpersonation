@@ -27,7 +27,7 @@ The labels are:
 - `low_signal`: fewer than 4 points with usable evidence;
 - `insufficient_evidence`: collection failed or no usable DOM/OCR evidence exists.
 
-The rule version is `sprint4-v1`, and analysis rows are append-only in SQLite. `analyses` prints the compact result; the factor JSON is retained in the database for later reporting in Sprint 5.
+The initial rule version was `sprint4-v1`; Sprint 6 extends it as `sprint6-v1`. Analysis rows are append-only in SQLite. `analyses` prints the compact result; the factor JSON is retained in the database for reporting.
 
 ## OCR and limitations
 
