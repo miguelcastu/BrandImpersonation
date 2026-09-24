@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brandwatch-lab"
-version = "0.1.0"
+version = "0.2.0"
 description = "A small, explainable brand impersonation discovery lab"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+browser = ["playwright>=1.48,<2"]
 
 [project.scripts]
 brandwatch = "brandwatch.cli:main"
@@ -21,6 +22,7 @@ packages = ["src/brandwatch"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["browser: integration tests that require Playwright and Chromium"]
 
 [tool.ruff]
 target-version = "py312"

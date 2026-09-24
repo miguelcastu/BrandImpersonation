@@ -2,7 +2,7 @@
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
-Sprint 1 implements discovery from a seed file and [crt.sh](https://crt.sh/) certificate search, candidate filtering, SQLite storage, a CLI, unit tests, and CI. Later sprints are specified in [docs/SPRINTS.md](docs/SPRINTS.md). The design decision is recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md).
+Sprints 1 and 2 implement discovery from seed files and [crt.sh](https://crt.sh/), candidate filtering, SQLite storage, and explicit Playwright collection of rendered page evidence. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Later work, including automatic typosquatting variants in Sprint 3, is specified in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md) and [ADR 0002](docs/adr/0002-rendered-browser-evidence.md).
 
 ## Run the offline example
 
@@ -41,3 +41,31 @@ tests/               Unit and CLI tests
 ```
 
 Local results live under `data/` and are ignored by Git.
+
+## Collect rendered browser evidence (Sprint 2)
+
+```shell
+uv sync --locked --extra dev --extra browser
+uv run playwright install chromium
+uv run brandwatch --db data/demo.db collect --demo
+uv run brandwatch --db data/demo.db evidence
+```
+
+This demo renders a bundled page in Chromium without visiting public websites. It saves structured
+DOM data and a screenshot under `data/evidence/`, with a history entry in the separate demo database.
+The page inserts its text and form using JavaScript, so the output demonstrates browser rendering.
+
+For real candidates already in your discovery database:
+
+```shell
+uv run brandwatch collect --url https://CANDIDATE-HOST/path
+uv run brandwatch evidence
+```
+
+Replace `CANDIDATE-HOST` with an actual stored hostname. With no URL,
+`collect --limit 5` selects five stored candidates. Collection records errors and continues through
+the selected batch. It does not submit forms, fill credentials or crawl discovered links.
+
+See [the Sprint 2 walkthrough](docs/sprints/02-collection.md) for the evidence format, limits and
+browser-assisted seed workflow. After browser installation, run `uv run pytest -q` to include the
+offline Chromium integration tests; `uv run pytest -q -m "not browser"` runs the unit tests alone.

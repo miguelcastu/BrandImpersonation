@@ -9,15 +9,20 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Newer Ubuntu images restrict the user namespaces used by Chromium's sandbox.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: '3.12'
       - name: Install project
-        run: uv sync --locked --extra dev
+        run: uv sync --locked --extra dev --extra browser
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
       - name: Lint
         run: uv run ruff check .
       - name: Unit tests
-        run: uv run pytest -q
+        run: uv run pytest -q -m 'not browser'
+      - name: Browser integration tests (offline fixtures)
+        run: uv run pytest -q -m browser

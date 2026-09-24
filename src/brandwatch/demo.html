@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>BrandWatch local demonstration</title>
+  <style>
+    body { font: 18px system-ui, sans-serif; background: #f2f5f9; color: #182536; padding: 48px; }
+    main { max-width: 650px; padding: 32px; background: white; border: 1px solid #ccd5df; }
+    label { display: block; margin: 16px 0; }
+    input { display: block; padding: 8px; }
+    .notice { color: #7c2d12; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="notice">LOCAL DEMO: fictional page, no network and no submission.</p>
+    <h1>BrandWatch collection example</h1>
+    <div id="content">Waiting for JavaScript...</div>
+  </main>
+  <script>
+    setTimeout(() => {
+      document.title = 'Microsoft example - local demo';
+      document.getElementById('content').innerHTML = `
+        <p>This Microsoft account example was added by JavaScript.</p>
+        <form action="/session" method="post" onsubmit="return false">
+          <label>Email<input type="email" name="email"></label>
+          <label>Password<input type="password" name="password"></label>
+          <button type="button" disabled>Demo only</button>
+        </form>
+        <a href="https://www.microsoft.com/">Official Microsoft website</a>`;
+    }, 100);
+  </script>
+</body>
+</html>
