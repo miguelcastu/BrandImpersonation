@@ -24,8 +24,8 @@ uv run brandwatch discover --source file --input data/typo-seeds.txt
 uv run brandwatch matches
 ```
 
-`matches` shows the source, search term, matched term and whether the match was a literal keyword or a
-generated variant. Known official domains and subdomains remain excluded.
+`matches` shows the source, search term, matched term and whether the match was a configured `keyword`
+or generated `variant`. Known official domains and subdomains remain excluded.
 
 CT discovery retains the configured `ct_queries` first and then uses typo hypotheses, with at most ten
 external searches per invocation:
@@ -47,9 +47,9 @@ uv run brandwatch context
 ```
 
 Enrichment is restricted to stored candidates. Each run saves an append-only snapshot containing
-current IPv4/IPv6 resolution and selected technical RDAP fields. DNS and RDAP failures are independent:
-a partial result is retained instead of discarding successful context. RDAP contact/vCard data is not
-stored.
+current IPv4/IPv6 resolution from the local system resolver and selected technical RDAP fields from
+`rdap.org`. DNS and RDAP failures are independent: a partial result is retained instead of discarding
+successful context. RDAP contact/vCard data is not stored.
 
 ## Verification
 
