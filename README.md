@@ -2,7 +2,7 @@
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
-Sprints 1 and 2 implement discovery from seed files and [crt.sh](https://crt.sh/), candidate filtering, SQLite storage, and explicit Playwright collection of rendered page evidence. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Later work, including automatic typosquatting variants in Sprint 3, is specified in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md) and [ADR 0002](docs/adr/0002-rendered-browser-evidence.md).
+Sprints 1 and 2 implement discovery from seed files and [crt.sh](https://crt.sh/), candidate filtering, SQLite storage, and explicit Playwright collection of rendered page evidence. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Later work includes automatic typosquatting variants in Sprint 3 and automatic page analysis in Sprint 4, so collected screenshots do not need to be opened one by one for initial triage. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md) and [ADR 0002](docs/adr/0002-rendered-browser-evidence.md).
 
 ## Run the offline example
 

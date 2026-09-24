@@ -7,7 +7,7 @@ Each sprint ends with a working CLI path, focused tests, documentation, and a re
 | 1 — Discovery | Brand config, seed file, CT search, normalization, official-domain exclusion, SQLite sightings, CLI, CI | Discover and list candidate domains with source provenance | Complete; Sprint 2 authorized |
 | 2 — Collection | Browser-assisted seed workflow and opt-in Playwright Chromium visit; rendered DOM text, title, forms, links, screenshot and fetch metadata; per-host limits | Local evidence for selected candidates, including JavaScript-rendered pages | Implemented; awaiting review |
 | 3 — Typosquatting and enrichment | Bounded variants from the brand name/keywords, CT searches that retain variant matches; free current DNS and RDAP lookups; optional passive DNS only if a suitable free interface exists | Discover spelling variants and attach technical context | Planned |
-| 4 — Scoring | Versioned weighted rules for brand similarity, page evidence, and technical context; conservative labels | Reproducible score with factor breakdown and tests | Planned |
+| 4 — Automated page analysis and scoring | Analyze every saved page using brand, rendered text, form and link signals, Sprint 3 enrichment, and local screenshot OCR when needed; versioned weighted rules and conservative labels | Run one command to classify collected pages with a factor breakdown, without opening every screenshot | Planned |
 | 5 — Action | Local case report, JSON/CSV export, `no action` and `review` decisions; no external submission | Review package and end-to-end demo | Planned |
 
 ## Sprint 1 acceptance criteria
@@ -50,3 +50,24 @@ recognize generated variants: otherwise `micr0soft` would be discarded by today'
 Tests will verify the expected substitutions, deduplication, query caps, official-domain exclusion,
 and that a CT fixture containing `micr0soft` survives filtering. Generated strings are hypotheses;
 only observed hostnames become discovered candidates. This feature is planned, not active in Sprint 2.
+
+## Sprint 4: planned automatic page analysis
+
+`analyze` will read the saved collection evidence for each candidate and score it automatically.
+Rules will use brand mentions in the title and rendered text, credential form fields, form action
+destinations, link destinations, redirects, typosquatting matches and available DNS/RDAP context.
+The score must include the evidence and contribution of each rule, so a reviewer can understand why
+a page was prioritized. Scoring all collected pages will not require opening their screenshots.
+
+When rendered DOM text is sparse, local OCR of the saved screenshot will add text evidence. The
+planned OCR engine is [Tesseract](https://tesseract-ocr.github.io/tessdoc/), which runs locally and
+is free. Its installation will be documented in that sprint. If OCR is unavailable or collection
+failed, the result must say `insufficient_evidence`; it must not silently label the page safe.
+Screenshots will remain available as supporting evidence for cases that are escalated.
+
+Acceptance tests will include a JavaScript-rendered mock login page, a screenshot-only page, a
+benign page that mentions Microsoft, a page with an external credential form action, and a failed
+collection. The automated analysis should prioritize convincing impersonation signals while
+explaining benign and uncertain outcomes. These are triage decisions, not a guarantee of confirmed
+impersonation. Sprint 5 will export the ranked cases for optional review; no takedown submission is
+planned.
