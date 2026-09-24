@@ -9,7 +9,8 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Newer Ubuntu images restrict the user namespaces used by Chromium's sandbox.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0

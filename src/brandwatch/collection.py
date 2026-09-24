@@ -248,5 +248,6 @@ async def collect_urls(
                 await browser.close()
     except BrowserError as exc:
         raise CollectionError(
-            f"Chromium could not run. Try 'uv run playwright install chromium'. Details: {exc}"
+            "Chromium could not run. Check 'uv run playwright install chromium' and "
+            f"your OS support for the Chromium sandbox. Details: {exc}"
         ) from exc

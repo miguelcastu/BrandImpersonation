@@ -17,6 +17,10 @@ and captures a form and text inserted by JavaScript. No public site is visited. 
 marked `is_demo: true`; it is not a real impersonation finding. Open the JSON and PNG paths printed
 by the command. The demo requires the browser installation, but runs offline after installation.
 
+Chromium runs with its sandbox enabled. CI uses Ubuntu 22.04; development was verified on Windows.
+Some newer Linux configurations restrict unprivileged user namespaces and need environment setup
+before a sandboxed browser can launch. See [Chromium's guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
+
 ## Collect a real candidate
 
 1. Run discovery and inspect `uv run brandwatch list`.
