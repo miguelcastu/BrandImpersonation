@@ -1,73 +1,73 @@
 # Sprint plan
 
-Each sprint ends with a working CLI path, focused tests, documentation, and a review before the next sprint begins. Keep providers optional and the pipeline usable offline with fixtures.
+Each sprint ends with a working CLI path, focused tests, documentation, and a review before the next sprint begins. Providers stay optional and the pipeline remains usable offline with fixtures.
 
 | Sprint | Scope | Reviewable result | Status |
 | --- | --- | --- | --- |
-| 1 — Discovery | Brand config, seed file, CT search, normalization, official-domain exclusion, SQLite sightings, CLI, CI | Discover and list candidate domains with source provenance | Complete; Sprint 2 authorized |
-| 2 — Collection | Browser-assisted seed workflow and opt-in Playwright Chromium visit; rendered DOM text, title, forms, links, screenshot and fetch metadata; per-host limits | Local evidence for selected candidates, including JavaScript-rendered pages | Complete; Sprint 3 authorized |
-| 3 — Typosquatting and enrichment | Bounded variants from the brand name/keywords, CT searches that retain variant matches; free current DNS and RDAP lookups; optional passive DNS only if a suitable free interface exists | Discover spelling variants and attach technical context | Implemented; awaiting review |
-| 4 — Automated page analysis and scoring | Analyze every saved page using brand, rendered text, form and link signals, Sprint 3 enrichment, and local screenshot OCR when needed; versioned weighted rules and conservative labels | Run one command to classify collected pages with a factor breakdown, without opening every screenshot | Planned |
-| 5 — Action | Local case report, JSON/CSV export, `no action` and `review` decisions; no external submission | Review package and end-to-end demo | Planned |
+| 1 - Discovery | Brand config, seed file, CT search, normalization, official-domain exclusion, SQLite sightings, CLI, CI | Discover and list candidate domains with source provenance | Complete |
+| 2 - Collection | Playwright visit, rendered DOM text, title, forms, links, screenshot and fetch metadata | Local evidence for selected candidates, including JavaScript-rendered pages | Complete |
+| 3 - Typosquatting and enrichment | Bounded variants, CT match provenance, current DNS and RDAP lookups | Discover spelling variants and attach technical context | Implemented |
+| 4 - Automated page analysis and scoring | Analyze saved evidence with explainable weighted rules and optional local OCR | Classify collected pages with a factor breakdown without opening every screenshot | Implemented; awaiting review |
+| 5 - Action | Local case report and JSON/CSV export with no external submission | Review package and end-to-end demo | Planned |
 
-## Sprint 1 acceptance criteria
+## Sprint 1
 
-- A fresh clone can install with `uv sync --locked --extra dev`, run `uv run pytest -q` and `uv run ruff check .`.
-- The offline Microsoft example yields two candidates and excludes its official subdomain and the unrelated host.
+- `uv sync --locked --extra dev` installs a fresh clone.
+- The offline Microsoft example yields two candidates and excludes its official subdomain and unrelated host.
 - Repeated discovery is idempotent and retains which source found each host.
-- CT errors are reported clearly, and unit tests use fixtures rather than network calls.
+- CT errors are reported clearly and unit tests use fixtures rather than network calls.
 - GitHub Actions runs lint and tests on pushes and pull requests.
+
+## Sprint 2
+
+- Chromium on the bundled offline fixture captures content added by JavaScript.
+- Evidence contains structured DOM text, title, forms, links, metadata and a screenshot without a stored HTML dump.
+- Existing candidates remain intact; each collection attempt adds a separate history entry.
+- Failed, blocked, timed-out and HTTP-error visits remain visible as outcomes.
+- Collection preserves explicit URL paths and visits at most five stored hosts by default.
+- Unit and browser tests run in CI without visiting external websites.
+
+See [the Sprint 2 walkthrough](sprints/02-collection.md) and [ADR 0002](adr/0002-rendered-browser-evidence.md).
+
+## Sprint 3: typosquatting and enrichment
+
+The local generator creates substitutions (`o` to `0`, `i` to `1`, `l` to `1`, `s` to `5`), single deletions and adjacent swaps. It returns at most 20 unique variants. `brandwatch variants` previews them without network access.
+
+CT discovery keeps configured queries first and adds generated variants up to 10 external queries. File discovery uses the same matching logic offline. The `discovery_matches` table records the source, search term, matched term and `keyword` or `variant` kind. Only observed hostnames become candidates, and official domains remain excluded.
+
+`brandwatch enrich` operates only on stored candidates. It saves current IPv4/IPv6 resolution from the local resolver and selected technical RDAP fields in append-only SQLite snapshots. DNS and RDAP failures are independent. Passive DNS is not enabled because it needs a suitable historical provider.
+
+## Sprint 4: automatic page analysis and scoring
+
+`brandwatch analyze` reads saved `evidence.json` files and never needs to open screenshots for normal DOM analysis. The versioned rules record a point contribution and an explanation for every signal:
+
+- brand text in the title: 1 point;
+- brand text in rendered body text: 1 point;
+- password, email or login-like fields: 3 points;
+- credential form action on another host: 4 points;
+- external links: 1 point;
+- checked redirects: 1 point;
+- a generated typo match: 2 points;
+- current DNS resolution: 1 contextual point;
+- RDAP availability: 0 points, retained as context only.
+
+Scores of 8 or more are `high_priority`, scores from 4 to 7 are `review`, and lower scores are `low_signal`. A failed collection, or a successful collection with no usable DOM data and no OCR text, is always `insufficient_evidence`; it is never silently marked safe. These labels prioritize review and do not confirm impersonation.
+
+`--ocr` enables a local Tesseract subprocess only when the DOM is sparse. If Tesseract is not installed or fails, the analysis keeps `insufficient_evidence` where appropriate. The `analyses` table stores the score, label, rule version and JSON factor breakdown as an append-only history.
+
+Example:
+
+```shell
+uv run brandwatch --db data/demo.db collect --demo
+uv run brandwatch --db data/demo.db analyze --config config/brand.example.toml --ocr
+uv run brandwatch --db data/demo.db analyses
+```
+
+See [the Sprint 4 walkthrough](sprints/04-analysis-scoring.md) and [ADR 0004](adr/0004-explainable-scoring.md).
 
 ## Deliberate limits
 
-- CT substring queries are a small, imperfect discovery source. Search results can be incomplete or delayed.
-- Discovery uses an explicit official-domain list rather than attempting to infer domain ownership.
-- Collection starts only with the explicit `collect` command. Scoring and report actions remain planned.
-- No credential collection, login submission, takedown request, or automated report to third parties is in scope.
-
-## Sprint 2 acceptance criteria
-
-- A real Chromium run on the bundled offline fixture captures content added by JavaScript.
-- Evidence contains structured DOM data and a viewport screenshot, without a stored HTML dump.
-- Existing candidates remain intact; each collection attempt adds a separate history entry.
-- Failed, blocked, timed-out and HTTP-error visits remain visible as outcomes.
-- Collection preserves an explicit URL's path; by default it visits up to five stored hostnames over HTTPS.
-- Unit and browser integration tests run in CI without visiting external websites.
-- See [the Sprint 2 walkthrough](sprints/02-collection.md) and [ADR 0002](adr/0002-rendered-browser-evidence.md).
-
-## Sprint 3: typosquatting and enrichment behavior
-
-Given the configured brand (for example `Microsoft` / keyword `microsoft`), generate a small,
-deterministic set of spelling variants automatically. Include character substitutions such as
-`o -> 0` (`micr0soft`, `micros0ft`), `i -> 1`, `l -> 1`, and `s -> 5`, plus a single deletion
-or adjacent-character swap. Unicode lookalike generation is outside the first implementation.
-
-Cap generation at 20 unique variants and external CT searches at 10 per run, with a local preview
-option. Keep the original search terms and track which variant matched. Candidate filtering must
-recognize generated variants: otherwise `micr0soft` would be discarded by today's literal
-`microsoft` rule. Continue excluding configured official domains.
-
-Tests will verify the expected substitutions, deduplication, query caps, official-domain exclusion,
-and that a CT fixture containing `micr0soft` survives filtering. Generated strings are hypotheses;
-only observed hostnames become discovered candidates. This behavior is implemented in Sprint 3; see [the walkthrough](sprints/03-typos-enrichment.md) and [ADR 0003](adr/0003-bounded-typos-and-enrichment.md).
-
-## Sprint 4: planned automatic page analysis
-
-`analyze` will read the saved collection evidence for each candidate and score it automatically.
-Rules will use brand mentions in the title and rendered text, credential form fields, form action
-destinations, link destinations, redirects, typosquatting matches and available DNS/RDAP context.
-The score must include the evidence and contribution of each rule, so a reviewer can understand why
-a page was prioritized. Scoring all collected pages will not require opening their screenshots.
-
-When rendered DOM text is sparse, local OCR of the saved screenshot will add text evidence. The
-planned OCR engine is [Tesseract](https://tesseract-ocr.github.io/tessdoc/), which runs locally and
-is free. Its installation will be documented in that sprint. If OCR is unavailable or collection
-failed, the result must say `insufficient_evidence`; it must not silently label the page safe.
-Screenshots will remain available as supporting evidence for cases that are escalated.
-
-Acceptance tests will include a JavaScript-rendered mock login page, a screenshot-only page, a
-benign page that mentions Microsoft, a page with an external credential form action, and a failed
-collection. The automated analysis should prioritize convincing impersonation signals while
-explaining benign and uncertain outcomes. These are triage decisions, not a guarantee of confirmed
-impersonation. Sprint 5 will export the ranked cases for optional review; no takedown submission is
-planned.
+- CT searches and typo generation are incomplete and can produce false leads.
+- DNS/RDAP context and a score are not ownership or maliciousness proof.
+- OCR is optional, local and dependent on an installed Tesseract executable.
+- No credential collection, login submission, takedown request or automated third-party report is in scope.
