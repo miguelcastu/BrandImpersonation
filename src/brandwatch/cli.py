@@ -6,7 +6,9 @@ import json
 import sqlite3
 import sys
 from contextlib import closing
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from brandwatch.analysis import analyze_evidence_file
 from brandwatch.collection import DEMO_URL, CollectionError, CollectionSettings, collect_urls
@@ -20,14 +22,18 @@ from brandwatch.discovery import (
 from brandwatch.enrichment import enrich_hostname
 from brandwatch.hosts import normalize_hostname
 from brandwatch.network import validate_url
+from brandwatch.reporting import build_cases, build_report, write_report
 from brandwatch.storage import (
     connect,
+    list_actions,
     list_analyses,
     list_candidates,
     list_collection_records,
     list_collections,
     list_discovery_matches,
     list_enrichments,
+    list_latest_analyses,
+    save_action,
     save_analysis,
     save_candidates,
     save_collection,
@@ -78,6 +84,22 @@ def make_parser() -> argparse.ArgumentParser:
     )
     analysis_list = commands.add_parser("analyses", help="List saved analysis results")
     analysis_list.add_argument("--limit", type=int, default=20)
+
+    report = commands.add_parser("report", help="Write a local case report")
+    report.add_argument("--config", type=Path, default=Path("config/brand.example.toml"))
+    report.add_argument("--output", type=Path, default=Path("data/report.json"))
+    report.add_argument(
+        "--format", choices=("json", "csv"), help="Output format (default: extension)"
+    )
+    report.add_argument("--limit", type=int, default=100, help="Maximum latest analyses, 1-1000")
+    report.add_argument(
+        "--decision",
+        choices=("all", "review", "no_action"),
+        default="all",
+        help="Include all cases or one local decision category",
+    )
+    actions = commands.add_parser("actions", help="List local report decisions")
+    actions.add_argument("--limit", type=int, default=100)
 
     collect = commands.add_parser("collect", help="Visit candidates and save rendered evidence")
     selection = collect.add_mutually_exclusive_group()
@@ -217,6 +239,42 @@ def run_analysis(args) -> int:
     return 0
 
 
+def run_report(args) -> int:
+    if not 1 <= args.limit <= 1000:
+        raise ValueError("report limit must be between 1 and 1000")
+    config = BrandConfig.load(args.config)
+    output_format = args.format or args.output.suffix.removeprefix(".") or "json"
+    with closing(connect(args.db)) as connection:
+        analyses = list_latest_analyses(connection, args.limit)
+        collections = {
+            row[0]: (row[2], row[3]) for row in list_collection_records(connection, 1000)
+        }
+        matches = list_discovery_matches(connection, 5000)
+        enrichments = {}
+        for _, host, collected_at, status, payload in list_enrichments(connection, 5000):
+            if host not in enrichments:
+                try:
+                    enrichments[host] = (status, collected_at, json.loads(payload))
+                except json.JSONDecodeError:
+                    continue
+        cases = build_cases(analyses, collections, matches, enrichments, args.decision)
+        document = build_report(config, cases)
+        write_report(document, args.output, output_format)
+        created_at = datetime.now(UTC).isoformat()
+        for case in cases:
+            save_action(
+                connection,
+                uuid4().hex,
+                case["analysis_id"],
+                case["hostname"],
+                created_at,
+                case["recommended_decision"],
+                str(args.output),
+            )
+    print(f"Wrote {len(cases)} case(s) to {args.output} ({output_format}).")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = make_parser()
     args = parser.parse_args(argv)
@@ -269,6 +327,14 @@ def main(argv: list[str] | None = None) -> int:
                 for row in list_analyses(connection, args.limit):
                     run_id, collection_id, host, analyzed_at, score, label, version, payload = row
                     print(f"{run_id}\t{collection_id}\t{host}\t{analyzed_at}\t{score}\t{label}\t{version}")
+        elif args.command == "report":
+            return run_report(args)
+        elif args.command == "actions":
+            if not 1 <= args.limit <= 1000:
+                raise ValueError("action limit must be between 1 and 1000")
+            with closing(connect(args.db)) as connection:
+                for row in list_actions(connection, args.limit):
+                    print("\t".join(row))
         elif args.command == "collect":
             return run_collection(args)
         elif args.command == "evidence":

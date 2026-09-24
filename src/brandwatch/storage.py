@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS analyses (
     rule_version TEXT NOT NULL,
     data_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS actions (
+    id TEXT PRIMARY KEY,
+    analysis_id TEXT NOT NULL REFERENCES analyses(id),
+    hostname TEXT NOT NULL REFERENCES candidates(hostname),
+    created_at TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK (decision IN ('review', 'no_action')),
+    report_path TEXT NOT NULL
+);
 """
 
 
@@ -211,5 +219,39 @@ def list_analyses(connection: sqlite3.Connection, limit: int = 20) -> list[tuple
     return connection.execute(
         "SELECT id, collection_id, hostname, analyzed_at, score, label, rule_version, data_json "
         "FROM analyses ORDER BY analyzed_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
+def list_latest_analyses(connection: sqlite3.Connection, limit: int = 100) -> list[tuple]:
+    rows = connection.execute(
+        "SELECT id, collection_id, hostname, analyzed_at, score, label, rule_version, data_json "
+        "FROM analyses ORDER BY analyzed_at DESC, id DESC"
+    ).fetchall()
+    seen: set[str] = set()
+    latest = []
+    for row in rows:
+        if row[1] not in seen:
+            latest.append(row)
+            seen.add(row[1])
+            if len(latest) >= limit:
+                break
+    return latest
+
+
+def save_action(connection: sqlite3.Connection, action_id: str, analysis_id: str, hostname: str,
+                created_at: str, decision: str, report_path: str) -> None:
+    with connection:
+        connection.execute(
+            "INSERT INTO actions (id, analysis_id, hostname, created_at, decision, report_path) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (action_id, analysis_id, hostname, created_at, decision, report_path),
+        )
+
+
+def list_actions(connection: sqlite3.Connection, limit: int = 100) -> list[tuple]:
+    return connection.execute(
+        "SELECT id, analysis_id, hostname, created_at, decision, report_path "
+        "FROM actions ORDER BY created_at DESC LIMIT ?",
         (limit,),
     ).fetchall()
