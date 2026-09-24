@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from brandwatch.analysis import AnalysisResult
     from brandwatch.collection import CollectionResult
     from brandwatch.discovery import CandidateFinding
     from brandwatch.enrichment import EnrichmentResult
@@ -47,6 +48,16 @@ CREATE TABLE IF NOT EXISTS enrichments (
     hostname TEXT NOT NULL REFERENCES candidates(hostname),
     collected_at TEXT NOT NULL,
     status TEXT NOT NULL,
+    data_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS analyses (
+    id TEXT PRIMARY KEY,
+    collection_id TEXT NOT NULL REFERENCES collections(id),
+    hostname TEXT NOT NULL REFERENCES candidates(hostname),
+    analyzed_at TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    rule_version TEXT NOT NULL,
     data_json TEXT NOT NULL
 );
 """
@@ -142,6 +153,14 @@ def list_collections(connection: sqlite3.Connection, limit: int = 20) -> list[tu
     ).fetchall()
 
 
+def list_collection_records(connection: sqlite3.Connection, limit: int = 25) -> list[tuple]:
+    return connection.execute(
+        "SELECT id, hostname, status, evidence_path FROM collections "
+        "ORDER BY collected_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
 def save_enrichment(connection: sqlite3.Connection, result: "EnrichmentResult") -> None:
     payload = json.dumps(
         {"dns": result.dns, "rdap": result.rdap, "errors": result.errors},
@@ -160,5 +179,37 @@ def list_enrichments(connection: sqlite3.Connection, limit: int = 20) -> list[tu
     return connection.execute(
         "SELECT id, hostname, collected_at, status, data_json FROM enrichments "
         "ORDER BY collected_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
+def save_analysis(connection: sqlite3.Connection, result: "AnalysisResult") -> None:
+    payload = json.dumps(
+        {"factors": result.factors, "ocr_used": result.ocr_used, "error": result.error},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    with connection:
+        connection.execute(
+            "INSERT INTO analyses "
+            "(id, collection_id, hostname, analyzed_at, score, label, rule_version, data_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                result.id,
+                result.collection_id,
+                result.hostname,
+                result.analyzed_at,
+                result.score,
+                result.label,
+                result.rule_version,
+                payload,
+            ),
+        )
+
+
+def list_analyses(connection: sqlite3.Connection, limit: int = 20) -> list[tuple]:
+    return connection.execute(
+        "SELECT id, collection_id, hostname, analyzed_at, score, label, rule_version, data_json "
+        "FROM analyses ORDER BY analyzed_at DESC LIMIT ?",
         (limit,),
     ).fetchall()

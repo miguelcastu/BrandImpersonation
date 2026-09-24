@@ -8,6 +8,7 @@ import sys
 from contextlib import closing
 from pathlib import Path
 
+from brandwatch.analysis import analyze_evidence_file
 from brandwatch.collection import DEMO_URL, CollectionError, CollectionSettings, collect_urls
 from brandwatch.config import BrandConfig
 from brandwatch.discovery import (
@@ -21,10 +22,13 @@ from brandwatch.hosts import normalize_hostname
 from brandwatch.network import validate_url
 from brandwatch.storage import (
     connect,
+    list_analyses,
     list_candidates,
+    list_collection_records,
     list_collections,
     list_discovery_matches,
     list_enrichments,
+    save_analysis,
     save_candidates,
     save_collection,
     save_enrichment,
@@ -64,6 +68,16 @@ def make_parser() -> argparse.ArgumentParser:
 
     context = commands.add_parser("context", help="List recent DNS/RDAP enrichment results")
     context.add_argument("--limit", type=int, default=20)
+
+    analyze = commands.add_parser("analyze", help="Score saved browser evidence")
+    analyze.add_argument("--config", type=Path, default=Path("config/brand.example.toml"))
+    analyze.add_argument("--host", action="append", help="Stored hostname; repeatable")
+    analyze.add_argument("--limit", type=int, default=25, help="Maximum evidence records, 1-100")
+    analyze.add_argument(
+        "--ocr", action="store_true", help="Use local Tesseract when DOM evidence is sparse"
+    )
+    analysis_list = commands.add_parser("analyses", help="List saved analysis results")
+    analysis_list.add_argument("--limit", type=int, default=20)
 
     collect = commands.add_parser("collect", help="Visit candidates and save rendered evidence")
     selection = collect.add_mutually_exclusive_group()
@@ -163,6 +177,46 @@ def run_enrichment(args) -> int:
         return int(failed)
 
 
+def run_analysis(args) -> int:
+    if not 1 <= args.limit <= 100:
+        raise ValueError("analysis limit must be between 1 and 100")
+    config = BrandConfig.load(args.config)
+    with closing(connect(args.db)) as connection:
+        records = list_collection_records(connection, args.limit)
+        if args.host:
+            requested = set(args.host)
+            records = [record for record in records if record[1] in requested]
+        if not records:
+            print("No collection evidence to analyze. Run collect first.")
+            return 0
+        matches = list_discovery_matches(connection, 1000)
+        enrichment_by_host = {}
+        for _, host, _, _, payload in list_enrichments(connection, 1000):
+            if host not in enrichment_by_host:
+                try:
+                    enrichment_by_host[host] = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+        for collection_id, host, status, evidence_path in records:
+            result = analyze_evidence_file(
+                evidence_path,
+                config,
+                discovery_matches=[row for row in matches if row[0] == host],
+                enrichment=enrichment_by_host.get(host),
+                use_ocr=args.ocr,
+            )
+            result.collection_id = collection_id
+            result.hostname = result.hostname or host
+            if status != "ok" and result.label != "insufficient_evidence":
+                result.label = "insufficient_evidence"
+            save_analysis(connection, result)
+            print(
+                f"{host}\t{result.score}\t{result.label}\t"
+                f"factors={json.dumps(result.factors, sort_keys=True)}"
+            )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = make_parser()
     args = parser.parse_args(argv)
@@ -206,6 +260,15 @@ def main(argv: list[str] | None = None) -> int:
                         data["dns"].get("ipv6", [])
                     )
                     print(f"{run_id}\t{host}\t{status}\t{collected_at}\taddresses={addresses}")
+        elif args.command == "analyze":
+            return run_analysis(args)
+        elif args.command == "analyses":
+            if not 1 <= args.limit <= 100:
+                raise ValueError("analysis limit must be between 1 and 100")
+            with closing(connect(args.db)) as connection:
+                for row in list_analyses(connection, args.limit):
+                    run_id, collection_id, host, analyzed_at, score, label, version, payload = row
+                    print(f"{run_id}\t{collection_id}\t{host}\t{analyzed_at}\t{score}\t{label}\t{version}")
         elif args.command == "collect":
             return run_collection(args)
         elif args.command == "evidence":

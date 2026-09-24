@@ -2,7 +2,7 @@
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
-Sprints 1 through 3 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, and explicit Playwright collection of rendered page evidence. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Later work includes automatic page analysis in Sprint 4, so collected screenshots do not need to be opened one by one for initial triage. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md) and [ADR 0002](docs/adr/0002-rendered-browser-evidence.md).
+Sprints 1 through 4 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, explicit Playwright collection, and explainable page scoring. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Sprint 5 will produce local review artifacts without submitting external takedowns. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md), [ADR 0002](docs/adr/0002-rendered-browser-evidence.md), [ADR 0003](docs/adr/0003-bounded-typos-and-enrichment.md), and [ADR 0004](docs/adr/0004-explainable-scoring.md).
 
 ## Run the offline example
 
@@ -85,3 +85,18 @@ the selected batch. It does not submit forms, fill credentials or crawl discover
 See [the Sprint 2 walkthrough](docs/sprints/02-collection.md) for the evidence format, limits and
 browser-assisted seed workflow. After browser installation, run `uv run pytest -q` to include the
 offline Chromium integration tests; `uv run pytest -q -m "not browser"` runs the unit tests alone.
+
+## Sprint 4: automatic analysis and scoring
+
+Analyze saved collection evidence without opening each screenshot:
+
+```shell
+uv run brandwatch --db data/demo.db collect --demo
+uv run brandwatch --db data/demo.db analyze --config config/brand.example.toml --ocr
+uv run brandwatch --db data/demo.db analyses
+```
+
+The result includes a score, conservative label and factor explanations. `--ocr` is optional and
+uses a local Tesseract executable only when DOM evidence is sparse. A failed collection or empty
+DOM without OCR remains `insufficient_evidence`; it is never treated as safe. See the [Sprint 4
+walkthrough](docs/sprints/04-analysis-scoring.md) and [ADR 0004](docs/adr/0004-explainable-scoring.md).
