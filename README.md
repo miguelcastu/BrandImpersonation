@@ -2,7 +2,7 @@
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
-Sprints 1 through 4 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, explicit Playwright collection, and explainable page scoring. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. Sprint 5 will produce local review artifacts without submitting external takedowns. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md), [ADR 0002](docs/adr/0002-rendered-browser-evidence.md), [ADR 0003](docs/adr/0003-bounded-typos-and-enrichment.md), and [ADR 0004](docs/adr/0004-explainable-scoring.md).
+Sprints 1 through 5 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, explicit Playwright collection, explainable page scoring, and local case reporting. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. The action stage only writes review artifacts; it never submits external takedowns. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md), [ADR 0002](docs/adr/0002-rendered-browser-evidence.md), [ADR 0003](docs/adr/0003-bounded-typos-and-enrichment.md), [ADR 0004](docs/adr/0004-explainable-scoring.md), and [ADR 0005](docs/adr/0005-local-action-reporting.md).
 
 ## Run the offline example
 
@@ -100,3 +100,18 @@ The result includes a score, conservative label and factor explanations. `--ocr`
 uses a local Tesseract executable only when DOM evidence is sparse. A failed collection or empty
 DOM without OCR remains `insufficient_evidence`; it is never treated as safe. See the [Sprint 4
 walkthrough](docs/sprints/04-analysis-scoring.md) and [ADR 0004](docs/adr/0004-explainable-scoring.md).
+
+## Sprint 5: local case reporting
+
+Create a review package from the latest analyses. This writes files and a local SQLite history only:
+
+```shell
+uv run brandwatch --db data/demo.db report --config config/brand.example.toml --output data/cases.json
+uv run brandwatch --db data/demo.db report --format csv --output data/cases.csv
+uv run brandwatch --db data/demo.db actions
+```
+
+`high_priority`, `review` and `insufficient_evidence` become `review`; only `low_signal` becomes
+`no_action`. The report contains factors, provenance, evidence paths and compact DNS/RDAP context,
+without copying page contents or contact data. No external action is submitted. See the [Sprint 5
+walkthrough](docs/sprints/05-action-report.md) and [ADR 0005](docs/adr/0005-local-action-reporting.md).

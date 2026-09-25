@@ -6,9 +6,9 @@ Each sprint ends with a working CLI path, focused tests, documentation, and a re
 | --- | --- | --- | --- |
 | 1 - Discovery | Brand config, seed file, CT search, normalization, official-domain exclusion, SQLite sightings, CLI, CI | Discover and list candidate domains with source provenance | Complete |
 | 2 - Collection | Playwright visit, rendered DOM text, title, forms, links, screenshot and fetch metadata | Local evidence for selected candidates, including JavaScript-rendered pages | Complete |
-| 3 - Typosquatting and enrichment | Bounded variants, CT match provenance, current DNS and RDAP lookups | Discover spelling variants and attach technical context | Implemented |
-| 4 - Automated page analysis and scoring | Analyze saved evidence with explainable weighted rules and optional local OCR | Classify collected pages with a factor breakdown without opening every screenshot | Implemented; awaiting review |
-| 5 - Action | Local case report and JSON/CSV export with no external submission | Review package and end-to-end demo | Planned |
+| 3 - Typosquatting and enrichment | Bounded variants, CT match provenance, current DNS and RDAP lookups | Discover spelling variants and attach technical context | Complete |
+| 4 - Automated page analysis and scoring | Analyze saved evidence with explainable weighted rules and optional local OCR | Classify collected pages with a factor breakdown without opening every screenshot | Complete |
+| 5 - Action and reporting | Local case decisions plus JSON/CSV export; no external submission | Review package and end-to-end demo | Implemented; awaiting review |
 
 ## Sprint 1
 
@@ -39,35 +39,29 @@ CT discovery keeps configured queries first and adds generated variants up to 10
 
 ## Sprint 4: automatic page analysis and scoring
 
-`brandwatch analyze` reads saved `evidence.json` files and never needs to open screenshots for normal DOM analysis. The versioned rules record a point contribution and an explanation for every signal:
-
-- brand text in the title: 1 point;
-- brand text in rendered body text: 1 point;
-- password, email or login-like fields: 3 points;
-- credential form action on another host: 4 points;
-- external links: 1 point;
-- checked redirects: 1 point;
-- a generated typo match: 2 points;
-- current DNS resolution: 1 contextual point;
-- RDAP availability: 0 points, retained as context only.
+`brandwatch analyze` reads saved `evidence.json` files and never needs to open screenshots for normal DOM analysis. Versioned rules record a point contribution and explanation for every signal: brand title (1), rendered text (1), credential fields (3), external credential action (4), external links (1), redirects (1), generated typo match (2), DNS resolution (1 contextual point), and RDAP availability (0 contextual points).
 
 Scores of 8 or more are `high_priority`, scores from 4 to 7 are `review`, and lower scores are `low_signal`. A failed collection, or a successful collection with no usable DOM data and no OCR text, is always `insufficient_evidence`; it is never silently marked safe. These labels prioritize review and do not confirm impersonation.
 
-`--ocr` enables a local Tesseract subprocess only when the DOM is sparse. If Tesseract is not installed or fails, the analysis keeps `insufficient_evidence` where appropriate. The `analyses` table stores the score, label, rule version and JSON factor breakdown as an append-only history.
+`--ocr` enables a local Tesseract subprocess only when the DOM is sparse. The `analyses` table stores the score, label, rule version and JSON factor breakdown as append-only history.
 
-Example:
+## Sprint 5: local action and reporting
+
+`brandwatch report` converts the latest analysis for each collection into a local case package. It assigns `review` to high-priority, review and insufficient-evidence cases. It assigns `no_action` only to low-signal cases. These are local workflow decisions; no command sends an email, takedown request or report to a provider.
+
+JSON is the default format and includes the score, label, recommendation, collection status, evidence path, factors, discovery matches and a small DNS/RDAP summary. CSV is available for spreadsheets and excludes raw page content and contact data. Each report decision is recorded in the append-only `actions` table.
 
 ```shell
-uv run brandwatch --db data/demo.db collect --demo
-uv run brandwatch --db data/demo.db analyze --config config/brand.example.toml --ocr
-uv run brandwatch --db data/demo.db analyses
+uv run brandwatch --db data/demo.db report --config config/brand.example.toml --output data/cases.json
+uv run brandwatch --db data/demo.db report --format csv --output data/cases.csv
+uv run brandwatch --db data/demo.db actions
 ```
 
-See [the Sprint 4 walkthrough](sprints/04-analysis-scoring.md) and [ADR 0004](adr/0004-explainable-scoring.md).
+See [the Sprint 5 walkthrough](sprints/05-action-report.md) and [ADR 0005](adr/0005-local-action-reporting.md).
 
 ## Deliberate limits
 
-- CT searches and typo generation are incomplete and can produce false leads.
-- DNS/RDAP context and a score are not ownership or maliciousness proof.
+- CT searches, typo generation, DNS/RDAP context and scoring can be incomplete or produce false leads.
+- A score and a report decision are not proof of ownership or maliciousness.
 - OCR is optional, local and dependent on an installed Tesseract executable.
 - No credential collection, login submission, takedown request or automated third-party report is in scope.
