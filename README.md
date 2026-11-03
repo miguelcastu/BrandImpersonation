@@ -1,8 +1,27 @@
-# BrandWatch Lab
+# BrandWatch Lab — Explainable Brand Impersonation Investigation
 
 A small, free-first project for finding and reviewing possible brand impersonation. The pipeline is **discovery → collection → enrichment → scoring → action**. A discovered domain is only a lead; no stage treats a name match as proof of impersonation. The action stage will generate local review artifacts and never submit takedown requests.
 
 Sprints 1 through 5 implement discovery from seed files and [crt.sh](https://crt.sh/), bounded typo variants, candidate provenance, SQLite storage, DNS/RDAP enrichment, explicit Playwright collection, explainable page scoring, and local case reporting. The CLI includes an offline browser demo, unit tests and browser integration tests in CI. The action stage only writes review artifacts; it never submits external takedowns. The acceptance criteria are in [docs/SPRINTS.md](docs/SPRINTS.md). Decisions are recorded in [ADR 0001](docs/adr/0001-local-python-pipeline.md), [ADR 0002](docs/adr/0002-rendered-browser-evidence.md), [ADR 0003](docs/adr/0003-bounded-typos-and-enrichment.md), [ADR 0004](docs/adr/0004-explainable-scoring.md), and [ADR 0005](docs/adr/0005-local-action-reporting.md).
+
+[Offline example](#run-the-offline-example) · [Reviewer guide](docs/reviewer-guide.md)
+· [Architecture](docs/architecture.md) · [Decisions](docs/adr/)
+
+```mermaid
+flowchart LR
+  SEED[Seed files or bounded CT search] --> CAND[Candidates and match provenance]
+  CAND --> SQL[SQLite history]
+  SQL --> ENRICH[Optional DNS and RDAP context]
+  SQL --> BROWSER[Explicit Playwright collection]
+  BROWSER --> EVIDENCE[DOM observations and screenshot]
+  EVIDENCE --> SCORE[Versioned factors and triage label]
+  ENRICH --> SCORE
+  SCORE --> REPORT[Local JSON or CSV review package]
+```
+
+Each stage preserves uncertainty. A score prioritizes review; it does not prove
+phishing. Collection does not fill credentials or submit forms. Reporting writes
+local artifacts and never contacts a takedown service.
 
 ## Run the offline example
 
